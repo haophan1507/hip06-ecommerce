@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema(
     passwordResetToken: {
       type: String,
     },
-    passwordResetExpired: {
+    passwordResetExpires: {
       type: String,
     },
   },
