@@ -1,5 +1,5 @@
-import nodemailer from 'nodemailer';
-import asyncHandler from 'express-async-handler';
+const nodemailer = require('nodemailer');
+const asyncHandler = require('express-async-handler');
 
 const sendMail = asyncHandler(async ({ email, html }) => {
   let transporter = nodemailer.createTransport({
@@ -13,8 +13,8 @@ const sendMail = asyncHandler(async ({ email, html }) => {
   });
 
   // send mail with defined transport object
-  let info = transporter.sendMail({
-    from: '"E-Commerce" <no-relply@ECommerce.com>', // sender address
+  let info = await transporter.sendMail({
+    from: '"Cuahangdientu" <no-relply@cuahangdientu.com>', // sender address
     to: email, // list of receivers
     subject: 'Forgot password', // Subject line
     html: html, // html body
@@ -23,4 +23,4 @@ const sendMail = asyncHandler(async ({ email, html }) => {
   return info;
 });
 
-export default sendMail;
+module.exports = sendMail;

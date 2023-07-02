@@ -1,18 +1,18 @@
-import User from '../models/user.js';
-import asyncHandler from 'express-async-handler';
-import jwt from 'jsonwebtoken';
-import {
+const User = require('../models/user');
+const asyncHandler = require('express-async-handler');
+const {
   generateAccessToken,
   generateRefreshToken,
-} from '../middlewares/jwt.js';
-import sendMail from '../utils/sendMail.js';
-import crypto from 'crypto';
+} = require('../middlewares/jwt');
+const jwt = require('jsonwebtoken');
+const sendMail = require('../utils/sendMail');
+const crypto = require('crypto');
 
 const register = asyncHandler(async (req, res) => {
-  const { email, password, firstName, lastName } = req.body;
-  if (!email || !password || !lastName || !firstName)
+  const { email, password, firstname, lastname } = req.body;
+  if (!email || !password || !lastname || !firstname)
     return res.status(400).json({
-      success: false,
+      sucess: false,
       mes: 'Missing inputs',
     });
 
@@ -21,21 +21,20 @@ const register = asyncHandler(async (req, res) => {
   else {
     const newUser = await User.create(req.body);
     return res.status(200).json({
-      success: newUser ? true : false,
+      sucess: newUser ? true : false,
       mes: newUser
         ? 'Register is successfully. Please go login~'
         : 'Something went wrong',
     });
   }
 });
-
 // Refresh token => Cấp mới access token
 // Access token => Xác thực người dùng, quân quyên người dùng
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({
-      success: false,
+      sucess: false,
       mes: 'Missing inputs',
     });
   // plain object
@@ -59,7 +58,7 @@ const login = asyncHandler(async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return res.status(200).json({
-      success: true,
+      sucess: true,
       accessToken,
       userData,
     });
@@ -67,7 +66,6 @@ const login = asyncHandler(async (req, res) => {
     throw new Error('Invalid credentials!');
   }
 });
-
 const getCurrent = asyncHandler(async (req, res) => {
   const { _id } = req.user;
   const user = await User.findById(_id).select('-refreshToken -password -role');
@@ -76,7 +74,6 @@ const getCurrent = asyncHandler(async (req, res) => {
     rs: user ? user : 'User not found',
   });
 });
-
 const refreshAccessToken = asyncHandler(async (req, res) => {
   // Lấy token từ cookies
   const cookie = req.cookies;
@@ -84,7 +81,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   if (!cookie && !cookie.refreshToken)
     throw new Error('No refresh token in cookies');
   // Check token có hợp lệ hay không
-  const rs = jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
+  const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
   const response = await User.findOne({
     _id: rs._id,
     refreshToken: cookie.refreshToken,
@@ -117,6 +114,12 @@ const logout = asyncHandler(async (req, res) => {
     mes: 'Logout is done',
   });
 });
+// Client gửi email
+// Server check email có hợp lệ hay không => Gửi mail + kèm theo link (password change token)
+// Client check mail => click link
+// Client gửi api kèm token
+// Check token có giống với token mà server gửi mail hay không
+// Change password
 
 const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.query;
@@ -138,15 +141,13 @@ const forgotPassword = asyncHandler(async (req, res) => {
     rs,
   });
 });
-
 const resetPassword = asyncHandler(async (req, res) => {
   const { password, token } = req.body;
-  if (!password || !token) throw new Error('Missing inputs');
+  if (!password || !token) throw new Error('Missing imputs');
   const passwordResetToken = crypto
     .createHash('sha256')
     .update(token)
     .digest('hex');
-
   const user = await User.findOne({
     passwordResetToken,
     passwordResetExpires: { $gt: Date.now() },
@@ -162,8 +163,50 @@ const resetPassword = asyncHandler(async (req, res) => {
     mes: user ? 'Updated password' : 'Something went wrong',
   });
 });
-
-export {
+const getUsers = asyncHandler(async (req, res) => {
+  const response = await User.find().select('-refreshToken -password -role');
+  return res.status(200).json({
+    success: response ? true : false,
+    users: response,
+  });
+});
+const deleteUser = asyncHandler(async (req, res) => {
+  const { _id } = req.query;
+  if (!_id) throw new Error('Missing inputs');
+  const response = await User.findByIdAndDelete(_id);
+  return res.status(200).json({
+    success: response ? true : false,
+    deletedUser: response
+      ? `User with email ${response.email} deleted`
+      : 'No user delete',
+  });
+});
+const updateUser = asyncHandler(async (req, res) => {
+  //
+  const { _id } = req.user;
+  if (!_id || Object.keys(req.body).length === 0)
+    throw new Error('Missing inputs');
+  const response = await User.findByIdAndUpdate(_id, req.body, {
+    new: true,
+  }).select('-password -role -refreshToken');
+  return res.status(200).json({
+    success: response ? true : false,
+    updatedUser: response ? response : 'Some thing went wrong',
+  });
+});
+const updateUserByAdmin = asyncHandler(async (req, res) => {
+  //
+  const { uid } = req.params;
+  if (Object.keys(req.body).length === 0) throw new Error('Missing inputs');
+  const response = await User.findByIdAndUpdate(uid, req.body, {
+    new: true,
+  }).select('-password -role -refreshToken');
+  return res.status(200).json({
+    success: response ? true : false,
+    updatedUser: response ? response : 'Some thing went wrong',
+  });
+});
+module.exports = {
   register,
   login,
   getCurrent,
@@ -171,4 +214,8 @@ export {
   logout,
   forgotPassword,
   resetPassword,
+  getUsers,
+  deleteUser,
+  updateUser,
+  updateUserByAdmin,
 };

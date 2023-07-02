@@ -1,14 +1,21 @@
-import { Router } from 'express';
-import * as ctrls from '../controllers/user.js';
-import { verifyAccessToken } from '../middlewares/verifyToken.js';
-const router = Router();
+const router = require('express').Router();
+const ctrls = require('../controllers/user');
+const { verifyAccessToken, isAdmin } = require('../middlewares/verifyToken');
 
 router.post('/register', ctrls.register);
 router.post('/login', ctrls.login);
 router.get('/current', verifyAccessToken, ctrls.getCurrent);
-router.post('/refreshToken', ctrls.refreshAccessToken);
+router.post('/refreshtoken', ctrls.refreshAccessToken);
 router.get('/logout', ctrls.logout);
-router.get('/forgotPassword', ctrls.forgotPassword);
-router.put('/resetPassword', ctrls.resetPassword);
+router.get('/forgotpassword', ctrls.forgotPassword);
+router.put('/resetpassword', ctrls.resetPassword);
+router.get('/', [verifyAccessToken, isAdmin], ctrls.getUsers);
+router.delete('/', [verifyAccessToken, isAdmin], ctrls.deleteUser);
+router.put('/current', [verifyAccessToken], ctrls.updateUser);
+router.put('/:uid', [verifyAccessToken, isAdmin], ctrls.updateUserByAdmin);
 
-export default router;
+module.exports = router;
+
+// CRUD | Create - Read - Update - Delete | POST - GET - PUT - DELETEeee
+// CREATE (POST) + PUT - body
+// GET + DELETE - query // ?fdfdsf&fdfs

@@ -1,15 +1,14 @@
-import mongoose from 'mongoose'; // Erase if already required
-import bcrypt from 'bcrypt';
-import crypto from 'crypto';
-
+const mongoose = require('mongoose'); // Erase if already required
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 // Declare the Schema of the Mongo model
-const userSchema = new mongoose.Schema(
+var userSchema = new mongoose.Schema(
   {
-    firstName: {
+    firstname: {
       type: String,
       required: true,
     },
-    lastName: {
+    lastname: {
       type: String,
       required: true,
     },
@@ -82,4 +81,4 @@ userSchema.methods = {
 };
 
 //Export the model
-export default mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', userSchema);
