@@ -21,12 +21,52 @@ const getProduct = asyncHandler(async (req, res) => {
 });
 // Filtering, sorting & pagination
 const getProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find();
+  const queries = { ...req.query };
+  const excludeFields = ['limit', 'sort', 'page', 'fields'];
+  excludeFields.forEach((el) => delete queries[el]);
+
+  //filter
+  let queryString = JSON.stringify(queries);
+  queryString = queryString.replace(
+    /\b(gte|gt|lt|lte)\b/g,
+    (matchedEl) => `$${matchedEl}`
+  );
+  const formattedQueries = JSON.parse(queryString);
+
+  if (queries?.title)
+    formattedQueries.title = { $regex: queries.title, $options: 'i' };
+
+  let queryCommand = Product.find(formattedQueries);
+
+  // 2) Sorting
+  if (req.query.sort) {
+    const sortBy = req.query.sort.split(',').join(' ');
+    queryCommand = queryCommand.sort(sortBy);
+  } else {
+    queryCommand = queryCommand.sort('-createdAt');
+  }
+
+  // 3) Fields limit
+  if (req.query.fields) {
+    const fields = req.query.fields.split(',').join(' ');
+    queryCommand = queryCommand.select(fields);
+  }
+
+  // 4) Pagination
+  const page = +req.query.page || 1;
+  const limit = +req.query.limit || process.env.LIMIT_PRODUCTS;
+  const skip = (page - 1) * limit;
+  queryCommand.skip(skip).limit(limit);
+
+  const response = await queryCommand;
+
   return res.status(200).json({
-    success: products ? true : false,
-    productDatas: products ? products : 'Cannot get products',
+    success: response ? true : false,
+    counts: response.length,
+    productData: response ? response : 'Cannot get products',
   });
 });
+
 const updateProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
   if (req.body && req.body.title) req.body.slug = slugify(req.body.title);
@@ -38,6 +78,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     updatedProduct: updatedProduct ? updatedProduct : 'Cannot update product',
   });
 });
+
 const deleteProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
   const deletedProduct = await Product.findByIdAndDelete(pid);
@@ -47,10 +88,48 @@ const deleteProduct = asyncHandler(async (req, res) => {
   });
 });
 
+const ratings = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { star, comment, pid } = req.body;
+
+  if (!star || !pid) throw new Error('Missing Inputs');
+  const ratingProduct = await Product.findById(pid);
+  const alreadyRating = ratingProduct?.ratings?.find(
+    (el) => el.postedBy.toString() === _id
+  );
+
+  if (alreadyRating) {
+    await Product.updateOne(
+      {
+        ratings: { $elemMatch: alreadyRating },
+      },
+      {
+        $set: { 'ratings.$.star': star, 'ratings.$.comment': comment },
+      },
+      {
+        new: true,
+      }
+    );
+  } else {
+    const response = await Product.findByIdAndUpdate(
+      pid,
+      {
+        $push: { ratings: { star, comment, postedBy: _id } },
+      },
+      { new: true }
+    );
+  }
+
+  return res.status(200).json({
+    status: true,
+  });
+});
+
 module.exports = {
   createProduct,
   getProduct,
   getProducts,
   updateProduct,
   deleteProduct,
+  ratings,
 };

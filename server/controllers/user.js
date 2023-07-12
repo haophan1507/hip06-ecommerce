@@ -13,7 +13,7 @@ const register = asyncHandler(async (req, res) => {
   if (!email || !password || !lastname || !firstname)
     return res.status(400).json({
       sucess: false,
-      mes: 'Missing inputs',
+      message: 'Missing inputs',
     });
 
   const user = await User.findOne({ email });
@@ -21,8 +21,8 @@ const register = asyncHandler(async (req, res) => {
   else {
     const newUser = await User.create(req.body);
     return res.status(200).json({
-      sucess: newUser ? true : false,
-      mes: newUser
+      success: newUser ? true : false,
+      message: newUser
         ? 'Register is successfully. Please go login~'
         : 'Something went wrong',
     });
@@ -35,7 +35,7 @@ const login = asyncHandler(async (req, res) => {
   if (!email || !password)
     return res.status(400).json({
       sucess: false,
-      mes: 'Missing inputs',
+      message: 'Missing inputs',
     });
   // plain object
   const response = await User.findOne({ email });
@@ -111,7 +111,7 @@ const logout = asyncHandler(async (req, res) => {
   });
   return res.status(200).json({
     success: true,
-    mes: 'Logout is done',
+    message: 'Logout is done',
   });
 });
 // Client gửi email
@@ -160,7 +160,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   await user.save();
   return res.status(200).json({
     success: user ? true : false,
-    mes: user ? 'Updated password' : 'Something went wrong',
+    message: user ? 'Updated password' : 'Something went wrong',
   });
 });
 const getUsers = asyncHandler(async (req, res) => {
