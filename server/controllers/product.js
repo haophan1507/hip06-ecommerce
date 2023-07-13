@@ -11,6 +11,7 @@ const createProduct = asyncHandler(async (req, res) => {
     createdProduct: newProduct ? newProduct : 'Cannot create new product',
   });
 });
+
 const getProduct = asyncHandler(async (req, res) => {
   const { pid } = req.params;
   const product = await Product.findById(pid);
@@ -111,7 +112,7 @@ const ratings = asyncHandler(async (req, res) => {
       }
     );
   } else {
-    const response = await Product.findByIdAndUpdate(
+    await Product.findByIdAndUpdate(
       pid,
       {
         $push: { ratings: { star, comment, postedBy: _id } },
@@ -120,8 +121,19 @@ const ratings = asyncHandler(async (req, res) => {
     );
   }
 
+  //Sum product
+  const updateProduct = await Product.findById(pid);
+  const ratingCount = updateProduct.ratings.length;
+  const sumRatings = updateProduct.ratings.reduce(
+    (sum, el) => sum + +el.star,
+    0
+  );
+  updateProduct.totalRatings = Math.round((sumRatings * 10) / ratingCount) / 10;
+  await updateProduct.save();
+
   return res.status(200).json({
     status: true,
+    updateProduct,
   });
 });
 
